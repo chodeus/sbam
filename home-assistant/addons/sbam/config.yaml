@@ -1,5 +1,5 @@
 name: sbam (dev)
-version: "feat-187-consumption-horizon-to-next-window-dev-b9af764"
+version: "release-v2.2.0-dev-1b3be92"
 slug: sbam
 init: false
 description: Smart Battery Advanced Manager
@@ -9,7 +9,7 @@ arch:
   - amd64
   - aarch64
 url: https://atbore-phx.github.io/sbam/
-image: ghcr.io/chodeus/ha-{arch}-sbam
+image: ghcr.io/atbore-phx/ha-{arch}-sbam
 
 options:
   url: https://api.solcast.com.au/rooftop_sites/<YOUR-SITE>/forecasts?format=json
