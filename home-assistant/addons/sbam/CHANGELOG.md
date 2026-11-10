@@ -1,3 +1,44 @@
+## What's New in v2.3.0
+
+### Cost-optimized dispatch: `scheduler_mode: optimize`
+
+New opt-in third scheduler mode. Every hour sbam builds a plan over the known price horizon (up to 36 h) from Nordpool spot prices, the Solcast PV forecast and the household's consumption history, then applies the action for the current hour: `self_consume`, `charge`, `hold`, `standby` or `discharge`. Prices come from a Nordpool sensor in Home Assistant; consumption is an hourly profile built from HA recorder history, with an optional EV guard that holds the battery while the car charges. Charging and discharging only replace self-consumption when they beat it by the configured minimum gain and wear cost.
+
+Fail-safes: an inverter revert timeout on every write, register read-back, and a fallback to inverter defaults on missing or implausible input, each with a stable reason code. The optimizer honours `sunspec_type` (`int_sf`, `float`, `auto`).
+
+`opt_dry_run` (now `optimizer.dry_run`) defaults to `true`: the plan is computed and published but nothing is written to the inverter. `sbam optimize` prints the plan once (always dry run); `sbam schedule` runs it hourly in optimize mode. New MQTT `<prefix>/plan` topic and Home Assistant discovery entities expose the action, rate, expected cost, horizon and per-hour plan.
+
+The optimizer options are grouped under one `optimizer:` map in `config.yaml` and the add-on. The CLI keeps the flat `--opt_*`/`--ha_*` flags; environment variables are `OPTIMIZER_*` (with `HA_URL`/`HA_TOKEN` for Home Assistant access). See [Cost-optimized Dispatch](https://atbore-phx.github.io/sbam/optimizer/) and [#210](https://github.com/atbore-phx/sbam/pull/210).
+
+### Charge-window hold, reserve and grid import limit
+
+`hold_battery: true` keeps the battery from discharging during a cheap charge window when no charge is needed. `reserve_horizon: until_solar` sizes the reserve from the Solcast 30-minute periods so the battery covers the house until PV does. `grid_import_limit` keeps the whole site under the contracted power while sbam charges from the grid, measured on the Fronius meter, and `grid_import_margin` keeps a safety margin. A new `hold` MQTT command, the `reserve_target_wh`/`reserve_deficit_wh`/`grid_charge_allowance_w` sensors and the `reserve_at_risk` binary sensor are available. See [#208](https://github.com/atbore-phx/sbam/pull/208).
+
+### SunSpec float model fix
+
+sbam now locates the SunSpec storage model on inverters configured for the `float` model type instead of relying on the fixed int+SF addresses. See [#201](https://github.com/atbore-phx/sbam/pull/201).
+
+### Upgrade notes
+
+- Optimizer options moved under `optimizer:` before release. Add-on users who experimented with dev builds must re-enter them under **optimizer**; dry run remains the default. The flat `opt_*`/`OPT_*` keys are still read for one release with a deprecation warning in Docker/CLI configurations.
+- Legacy shared paths changed deliberately: `Setdefaults` now writes in a fixed order and verifies by read-back (a mismatch is only a warning); `GetForecast` rejects non-200 Solcast responses instead of decoding an error body; `ForceCharge` caps percentages above 100.
+- The add-on manifest sets `homeassistant_api: true` so the optimizer can reach Home Assistant through the Supervisor token. This permission is granted to sbam even when `scheduler_mode` stays `crontab`/`windows`.
+- Live optimize mode writes to the inverter; work through the [go-live checklist](https://atbore-phx.github.io/sbam/optimizer/) first.
+
+## What's New in v2.2.0
+
+### `to_next_window` consumption horizon
+
+New third mode for the `consumption_horizon` option: `to_next_window` sizes consumption to the span from now until the next charge window starts (`pw_consumption × hours / 24`) instead of the full day or the midnight-resetting `remaining_today`. The span may cross midnight and can exceed 24 h for weekday-gapped windows, producing the expected consumption until the next charge opportunity. Next-window selection scans all windows for the nearest upcoming start, independent of list order, weekday filters, and cross-midnight windows. When no next window can be resolved it falls back to `remaining_today`, and the published MQTT state reports the horizon actually applied. Contributed by [@chodeus](https://github.com/chodeus) in [#188](https://github.com/atbore-phx/sbam/pull/188).
+
+See: [Configuration → Consumption horizon modes](https://atbore-phx.github.io/sbam/configuration/#consumption-horizon-modes) · [Weekdays → Interaction with the `to_next_window` consumption horizon](https://atbore-phx.github.io/sbam/weekdays/#interaction-with-the-to_next_window-consumption-horizon)
+
+### Stable Home Assistant device identity across inverter IP changes
+
+The MQTT discovery device identifier used to be derived from the inverter IP, so moving the inverter (VLAN change, DHCP renumbering) re-identified every entity in Home Assistant: the previously discovered entities were stranded as permanently unavailable ghosts and a duplicate `_2` set appeared that no automation or dashboard referenced. The identifier is now persisted to a `mqtt_device_id` file in the working directory (`/data` for the add-on) on first discovery publish and reused on every later run, so entities keep their identity when `fronius_ip` changes. Existing installs keep their current identity on upgrade; editing the file is a supported manual override and deleting it re-derives from config. Read/write failures fall back to the derived value so discovery still publishes. Contributed by [@chodeus](https://github.com/chodeus) in [#195](https://github.com/atbore-phx/sbam/pull/195).
+
+See: [MQTT Guide → Home Assistant Discovery Behavior → Device Identity](https://atbore-phx.github.io/sbam/mqtt/#device-identity)
+
 ## What's New in v2.1.0
 
 ### Multi-window charging schedule
