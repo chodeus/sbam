@@ -1,0 +1,88 @@
+# .coderabbit.yaml — CodeRabbit review config for chodeus/sbam (fork of atbore-phx/sbam: Go 1.26 CLI + Home Assistant add-on)
+language: "en-US"
+
+reviews:
+  # assertive: chill passes diffs that assertive flags with Major findings; the path rules keep style nits out
+  profile: "assertive"
+  request_changes_workflow: false
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  related_issues: false
+  related_prs: false
+  suggested_reviewers: false
+  in_progress_fortune: false
+  pre_merge_checks:
+    # off: the upstream project has no docstring coverage convention
+    docstrings:
+      mode: "off"
+  auto_review:
+    enabled: true
+    drafts: false
+    # Fork PRs target a stacked base branch, never the default branch.
+    base_branches:
+      - ".*"
+
+  path_filters:
+    - "!bin/**"
+    - "!go.sum"
+    - "!docs/plans/**"
+    - "!docs/brainstorms/**"
+    - "!docs/implementations/**"
+    - "!**/testdata/**"
+
+  path_instructions:
+    - path: "pkg/**/*.go"
+      instructions: |
+        sbam writes charge and discharge commands to a Fronius inverter, so a wrong decision
+        costs money or drains a battery. Changes go upstream as small, additive PRs: prefer a
+        new function or type over reshaping existing ones, and keep existing behaviour and
+        messages unless the change needs them. gofmt and go vet run in CI, so do NOT report
+        style, naming or layout nits. Review logic, correctness and security:
+
+        - Fail safe: missing, stale or implausible input (price, SoC, forecast, history) must
+          end in a fallback with a reason code and no inverter write, never a guess.
+          optimizer.dry_run defaults to true and nothing may write while it is true.
+        - Configuration: precedence is flag > environment > config.yaml. A new optimizer key
+          needs its entry in optKeySpecs, a flag, validation in the aggregated problem list,
+          and the add-on schema, options and translation. Invalid values are errors, not
+          silent defaults.
+        - Time: slots are local wall-clock hours; days have 23 or 25 hours at a DST change.
+          Flag hour-of-day arithmetic on UTC, time.Local in pkg/optimize (the location is
+          passed in), and durations that assume 24 h days.
+        - Money and energy: check units (W vs Wh vs kWh, per kWh vs per MWh), the sign of buy,
+          sell, import and export, and a tax applied twice or not at all.
+        - 0, "" or an empty list treated as "unset" where 0 is a valid value.
+        - Secrets: a new key holding a token or password must be in SecretKeys so the startup
+          dump redacts it; URLs with userinfo go in URLKeys.
+        - Errors are returned, not panicked or swallowed; external calls take a context and a
+          timeout.
+        - Comments, flag help and error messages that disagree with the code they describe.
+          Comments are navigational or gotcha only (1-2 lines); flag narrative or history.
+
+    - path: "pkg/**/*_test.go"
+      instructions: |
+        testify tests. Review whether each assertion verifies the behaviour its name claims,
+        tests weakened to pass (over-broad Contains, removed cases, ignored errors), a fake that
+        stubs the seam the test claims to cover, and results that depend on today's date, the
+        machine's time zone or map order. Fixtures use placeholders only: 192.0.2.x addresses,
+        example.invalid hosts, test tokens. Ignore style nits.
+
+    - path: "home-assistant/addons/sbam/**"
+      instructions: |
+        Home Assistant add-on. The Supervisor validates options against the schema before sbam
+        starts: a schema regex must accept nothing that sbam's own parser rejects, options
+        defaults must equal the CLI flag defaults, every schema key needs a name and
+        description in translations/en.yaml, and a new required option must have a default so
+        existing installs still start after the update.
+
+    - path: "docs/site/**/*.md"
+      instructions: |
+        User documentation. Flag option names, defaults, ranges, units and examples that do not
+        match the code, and steps that would make a first-time user write to the inverter
+        before a dry run. Ignore wording preferences.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        GitHub Actions. Flag unpinned third-party actions, permissions wider than the job
+        needs, untrusted input (branch names, PR titles) interpolated into run steps, and
+        secrets exposed to pull_request runs from forks.
