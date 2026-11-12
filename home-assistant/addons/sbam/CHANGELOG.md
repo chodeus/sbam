@@ -10,6 +10,10 @@ Fail-safes: an inverter revert timeout on every write, register read-back, and a
 
 The optimizer options are grouped under one `optimizer:` map in `config.yaml` and the add-on. The CLI keeps the flat `--opt_*`/`--ha_*` flags; environment variables are `OPTIMIZER_*` (with `HA_URL`/`HA_TOKEN` for Home Assistant access). See [Cost-optimized Dispatch](https://atbore-phx.github.io/sbam/optimizer/) and [#210](https://github.com/atbore-phx/sbam/pull/210).
 
+### Fixed time-of-use tariffs: `optimizer.price_source: static`
+
+Optimize mode no longer needs a spot price. With `optimizer.price_source: static`, the buy and feed-in price come from two lists of 24 hourly values in the new `optimizer.static` map (`buy_price`, `sell_price`, optional `currency`), for contracts with fixed time-of-use prices. No price sensor is read; the VAT rate, sell margin and purchase surcharge are not used. The default stays `nordpool`, so existing configurations are unchanged. See [Fixed time-of-use tariffs](https://atbore-phx.github.io/sbam/optimizer/#fixed-time-of-use-tariffs) and [#151](https://github.com/atbore-phx/sbam/issues/151).
+
 ### Charge-window hold, reserve and grid import limit
 
 `hold_battery: true` keeps the battery from discharging during a cheap charge window when no charge is needed. `reserve_horizon: until_solar` sizes the reserve from the Solcast 30-minute periods so the battery covers the house until PV does. `grid_import_limit` keeps the whole site under the contracted power while sbam charges from the grid, measured on the Fronius meter, and `grid_import_margin` keeps a safety margin. A new `hold` MQTT command, the `reserve_target_wh`/`reserve_deficit_wh`/`grid_charge_allowance_w` sensors and the `reserve_at_risk` binary sensor are available. See [#208](https://github.com/atbore-phx/sbam/pull/208).
