@@ -1,5 +1,5 @@
 name: sbam (dev)
-version: "release-v2.3.0-dev-bac3f54"
+version: "feat-optimize-static-tariff-dev-9e2fd2f"
 slug: sbam
 init: false
 description: Smart Battery Advanced Manager
@@ -10,7 +10,7 @@ arch:
   - amd64
   - aarch64
 url: https://atbore-phx.github.io/sbam/
-image: ghcr.io/atbore-phx/ha-{arch}-sbam
+image: ghcr.io/chodeus/ha-{arch}-sbam
 
 options:
   url: https://api.solcast.com.au/rooftop_sites/<YOUR-SITE>/forecasts?format=json
@@ -50,7 +50,12 @@ options:
   debug: false
   log_type: console
   optimizer:
+    price_source: nordpool
     price_entity: ""
+    static:
+      buy_price: ""
+      sell_price: ""
+      currency: ""
     consumption_entity: ""
     ev_entity: ""
     ev_guard_w: 1000
@@ -116,7 +121,12 @@ schema:
   debug: bool
   log_type: list(console|json)
   optimizer:
+    price_source: list(nordpool|static)
     price_entity: match(^$|^sensor\.[a-z0-9_]+$)
+    static:
+      buy_price: match(^$|^\s*(-[0-4](\.[0-9]+)?|-5(\.0+)?|[0-4]?[0-9](\.[0-9]+)?|50(\.0+)?)(\s*,\s*(-[0-4](\.[0-9]+)?|-5(\.0+)?|[0-4]?[0-9](\.[0-9]+)?|50(\.0+)?)){23}\s*$)
+      sell_price: match(^$|^\s*(-[0-4](\.[0-9]+)?|-5(\.0+)?|[0-4]?[0-9](\.[0-9]+)?|50(\.0+)?)(\s*,\s*(-[0-4](\.[0-9]+)?|-5(\.0+)?|[0-4]?[0-9](\.[0-9]+)?|50(\.0+)?)){23}\s*$)
+      currency: match(^\S{0,8}$)
     consumption_entity: match(^$|^sensor\.[a-z0-9_]+$)
     ev_entity: match(^$|^sensor\.[a-z0-9_]+$)
     ev_guard_w: float(0,50000)
